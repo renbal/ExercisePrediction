@@ -1,0 +1,81 @@
+---
+title: "Exercise Performance"
+author: "R. Baltimore"
+date: "Saturday, July 25, 2015"
+output: html_document
+---
+
+##Overview
+This assignment was completed as a requirement for the Coursera Data Science Specialization 'Pracitical Machine Learning' Course. The aim of this project is to predict the manner in which weight-lifting exercises are being done, given personal activity data gathered from accelerometers on the belt, forearm, arm and dumbell of six (6) participants.Exercises were performed correctly and incorrectly in 5 different ways 
+
+
+##Libraries
+The following libraries are used in processing and model building:
+```{r echo=TRUE, result="hide"}
+library(caret)
+library(randomForest)
+```
+
+
+
+##Data
+Documentation for the data used for this project can be accessed from the website: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har):
+
+The training and testing datasets are downloaded and loaded into R and the training set data examined
+```{r echo=TRUE, results="hide"}
+urlTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+urlTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+#download.file(url=urlTrain, destfile='training.csv')
+#download.file(url=urlTest, destfile='testing.csv')
+training <- read.csv('training.csv')
+testing <- read.csv('testing.csv')
+
+str(training)
+```
+
+The data is cleaned to eliminate variables which contain mostly NA values, have little to no variance, and are not useful to our prediction process.
+```{r echo=TRUE, result="hide"}
+navals <- apply(training, 2, function(x) {sum(is.na(x))})
+training <- training[,which(navals==0)]
+
+nearzero <- nearZeroVar(training)
+training <- training[, -nearzero]
+
+nearzero2 <- nearZeroVar(testing)
+testing <- testing[, -nearzero2]
+
+training <- training[, -(1:5)]
+testing <-testing[, -(1:5)]
+
+```
+
+
+The training set is partitioned into sets for training and cross-validation and the training partition is examined
+```{r echo=TRUE, result="hide"}
+set.seed(525)
+inTrain <- createDataPartition(training$classe, p=0.6,list=FALSE)
+partTrain <- training[inTrain, ]
+partTest <- training[-inTrain, ]
+str(partTrain)
+```
+
+##Developing Algorithm
+The training partition now consists of 11776 observations of 54 variables. Training is done using the random forest algorithm on the training partition partTrain, while cross-validation is done on the testing partition partTest. 
+```{r echo=TRUE}
+modfit <- randomForest(classe~., data = partTrain, method = "class")
+
+predictCV <- predict(modfit, partTest, type="class")
+confusionMatrix(predictCV, partTest$classe)
+```
+
+The algorithm has quite a high accuracy at 0.9967 while the expected out-of-sample error is 0.0033. Hence, we are expecting than a very high number, if not all, of the testing set data will be classified correctly.
+
+##Conclusion
+We now use our model to predict the intial testing set.
+```{r echo=TRUE}
+predictTest <- predict(modfit, testing, type="class")
+predictTest
+
+```
+
+
